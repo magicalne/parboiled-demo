@@ -1,0 +1,7 @@
+init:
+ruleSet = [test.groovy, haha.groovy]
+mode = NORMAL
+PASS -> One
+
+step-One
+ruleSet = [test.groovy]

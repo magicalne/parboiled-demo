@@ -1,9 +1,11 @@
+import java.util.HashSet;
 import java.util.Set;
 
 /**
  * Author: zehui.lv@dianrong on 6/15/17.
  */
 public class Step {
+    private String name;
     private Set<String> ruleSet;
     private Mode mode;
     private String passStep;
@@ -17,40 +19,53 @@ public class Step {
         return ruleSet;
     }
 
-    public void setRuleSet(Set<String> ruleSet) {
+    public Step setRuleSet(Set<String> ruleSet) {
         this.ruleSet = ruleSet;
+        return this;
+    }
+
+    public Step addRule(String rule) {
+        if (this.ruleSet == null) {
+            ruleSet = new HashSet<>();
+        }
+        ruleSet.add(rule);
+        return this;
     }
 
     public Mode getMode() {
         return mode;
     }
 
-    public void setMode(Mode mode) {
+    public Step setMode(Mode mode) {
         this.mode = mode;
+        return this;
     }
 
     public String getPassStep() {
         return passStep;
     }
 
-    public void setPassStep(String passStep) {
+    public Step setPassStep(String passStep) {
         this.passStep = passStep;
+        return this;
     }
 
     public String getRejectStep() {
         return rejectStep;
     }
 
-    public void setRejectStep(String rejectStep) {
+    public Step setRejectStep(String rejectStep) {
         this.rejectStep = rejectStep;
+        return this;
     }
 
     public String getUndefineStep() {
         return undefineStep;
     }
 
-    public void setUndefineStep(String undefineStep) {
+    public Step setUndefineStep(String undefineStep) {
         this.undefineStep = undefineStep;
+        return this;
     }
 
     @Override
@@ -62,5 +77,14 @@ public class Step {
                 ", rejectStep='" + rejectStep + '\'' +
                 ", undefineStep='" + undefineStep + '\'' +
                 '}';
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public Step setName(String name) {
+        this.name = name;
+        return this;
     }
 }

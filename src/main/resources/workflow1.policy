@@ -1,0 +1,6 @@
+init:
+ruleSet = [ test.groovy   , a, a  , fasd      ,      123]
+mode = NORMAL
+pass -> one
+reject -> return
+undefine -> return

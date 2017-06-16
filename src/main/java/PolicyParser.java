@@ -2,9 +2,10 @@ import org.parboiled.BaseParser;
 import org.parboiled.Parboiled;
 import org.parboiled.Rule;
 import org.parboiled.annotations.BuildParseTree;
-import org.parboiled.parserunners.ReportingParseRunner;
+import org.parboiled.parserunners.RecoveringParseRunner;
 import org.parboiled.support.ParseTreeUtils;
 import org.parboiled.support.ParsingResult;
+import org.parboiled.support.Var;
 
 import java.io.IOException;
 import java.net.URL;
@@ -17,74 +18,106 @@ import java.nio.file.Paths;
  * Author: zehui.lv@dianrong on 6/15/17.
  */
 @BuildParseTree
-public class PolicyParser extends BaseParser<Policy> {
+public class PolicyParser extends BaseParser<Object> {
 
-    private Policy policy;
-    public PolicyParser() {
-        policy = new Policy();
-    }
 
     Rule PolicyRoot() {
-        return Sequence(InitBlock(), ZeroOrMore(StepBlock()));
+        Policy policy = new Policy();
+        final Var<Policy> policyVar = new Var<>(policy);
+        return Sequence(InitBlock(policyVar), ZeroOrMore(StepBlock(policyVar)), EOI, push(policyVar.getAndClear()));
     }
 
-    Rule InitBlock() {
+    Rule InitBlock(Var<Policy> policyVar) {
+        final Var<Step> initVar = new Var<>(new Step());
         return Sequence(
-                String("init:"),
-                FlowBlock(),
-                FirstOf(OneOrMore(NewLine()), EOI));
+                String("init:"), Spacing(),// push(initVar.get().setName("init")),
+                Block(initVar),// push(policyVar.get().setInitStep(initVar.get())),
+//                FirstOf(OneOrMore(NewLine()), EOI));
+                NewLine());
     }
 
-    Rule StepBlock() {
+    Rule StepBlock(Var<Policy> policyVar) {
+        final Var<Step> stepVar = new Var<>(new Step());
         return Sequence(
                 IgnoreCase("step-"),
-                ANY,
-                ZeroOrMore(Ch(' '))
-
+                ANY, push(stepVar.get().setName(match())),
+                ZeroOrMore(Ch(' '), Block(stepVar), FirstOf(OneOrMore(NewLine()), EOI)),
+                push(policyVar.get().getSteps().add(stepVar.get()))
         );
     }
 
-    Rule FlowBlock() {
-        return FirstOf(
-                RuleSet(),
-                Optional(Mode()),
-                Optional(Flow()),
-                Optional(Flow()),
-                Optional(Flow())
-        );
-    }
-
-    Rule Mode() {
-        return Sequence(String("mode"), Ch('='), ANY);
-    }
-
-    Rule Flow() {
+    Rule Block(Var<Step> stepVar) {
         return Sequence(
-                FirstOf(String("PASS"), String("REJECT"), String("UNDEFINE")),
-                String("->"),
-                ANY
+                RuleSet(stepVar),
+                Optional(Mode(stepVar)),
+                Optional(PassFlow(stepVar)),
+                Optional(RejectFlow(stepVar)),
+                Optional(UndefineFlow(stepVar))
         );
     }
 
-    Rule RuleSet() {
-        return Sequence(String("ruleSet"), Ch('='), Rules());
+    Rule Mode(Var<Step> stepVar) {
+        return Sequence(
+                String("mode"),
+                Ch('='),
+                ANY, push(stepVar.get().setMode(Mode.valueOf(match())))
+        );
     }
 
-    Rule Rules() {
-        return Sequence(Ch('['), SingleRule(), Ch(']'));
+    Rule PassFlow(Var<Step> stepVar) {
+        return Sequence(
+                IgnoreCase("PASS"),
+                String("->"),
+                ANY, push(stepVar.get().setPassStep(match()))
+        );
     }
 
-    Rule SingleRule() {
+    Rule RejectFlow(Var<Step> stepVar) {
+        return Sequence(
+                IgnoreCase("REJECT"),
+                String("->"),
+                ANY, push(stepVar.get().setRejectStep(match()))
+        );
+    }
+
+    Rule UndefineFlow(Var<Step> stepVar) {
+        return Sequence(
+                IgnoreCase("UNDEFINE"),
+                String("->"),
+                ANY, push(stepVar.get().setUndefineStep(match()))
+        );
+    }
+
+    Rule RuleSet(Var<Step> initVar) {
+        return Sequence(
+                String("ruleSet"),
+                Ch('='),
+                Rules(initVar));
+    }
+
+    Rule Rules(Var<Step> initVar) {
+        return Sequence(
+                Ch('['),
+                SingleRule(initVar),
+                Ch(']')
+        );
+    }
+
+    Rule SingleRule(Var<Step> initVar) {
         return Sequence(
                 ZeroOrMore(Ch(' ')),
-                OneOrMore(TestNot(Ch(',')), ANY),
+                OneOrMore(TestNot(Ch(','), Ch('"')), ANY), //push(initVar.get().getRuleSet().add(match())),
                 Optional(Ch(',')),
                 Optional(ZeroOrMore(Ch(' ')))
         );
     }
 
-    public Rule NewLine() {
+    Rule NewLine() {
         return FirstOf('\n', Sequence('\r', Optional('\n')));
+    }
+
+    Rule Spacing() {
+        return ZeroOrMore(OneOrMore(AnyOf(" \t\r\n\f").label("Whitespace")));
     }
 
     public static void main(String[] args) throws IOException {
@@ -98,7 +131,7 @@ public class PolicyParser extends BaseParser<Policy> {
             System.out.println(content);
 
             final PolicyParser parser = Parboiled.createParser(PolicyParser.class);
-            ParsingResult<?> result = new ReportingParseRunner(parser.PolicyRoot()).run(content);
+            ParsingResult<Policy> result = new RecoveringParseRunner<Policy>(parser.PolicyRoot()).run(content);
             String parseTreePrintOut = ParseTreeUtils.printNodeTree(result);
             System.out.println(parseTreePrintOut);
         }

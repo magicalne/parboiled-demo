@@ -26,6 +26,7 @@ public class PolicyParser1 extends BaseParser<Object> {
         final Var<Policy> policyVar = new Var<>(policy);
         return Sequence(
                 InitBlock(policyVar),
+                StepBlockList(policyVar),
                 EOI,
                 push(policyVar.get())
         );
@@ -38,14 +39,51 @@ public class PolicyParser1 extends BaseParser<Object> {
                 String("init:"),
                 NewLine(),
                 Step(stepVar),
-                ZeroOrMore(NewLine()),
                 policyVar.set(policyVar.get().setInitStep(stepVar.get()))
         );
     }
+
+    Rule StepBlockList(Var<Policy> policyVar) {
+        return ZeroOrMore(
+                StepBlock(policyVar)
+        );
+    }
+
+    Rule StepBlock(Var<Policy> policyVar) {
+        final Var<Step> stepVar = new Var<>(new Step());
+        return Sequence(
+                ZeroOrMore(Spacing()),
+                String("step"),
+                Spacing(),
+                StepName(stepVar),
+                ColonChar(),
+                NewLine(),
+                Step(stepVar),
+                ZeroOrMore(NewLine()),
+                policyVar.set(policyVar.get().addStep(stepVar.get()))
+        );
+    }
+
+    Rule StepName(Var<Step> stepVar) {
+        return Sequence(
+                OneOrMore(
+                        TestNot(Spacing()),
+                        TestNot(ColonChar()),
+                        ANY
+                ),
+                stepVar.set(stepVar.get().setName(match()))
+
+        );
+    }
+
+    Rule ColonChar() {
+        return Ch(':');
+    }
+
     Rule Step(Var<Step> stepVar) {
         return Sequence(
                 RuleSet(stepVar),
-                Mode(stepVar),
+                Optional(Mode(stepVar)),
                 Optional(PassFlow(stepVar)),
                 Optional(RejectFlow(stepVar)),
                 Optional(UndefineFlow(stepVar))
@@ -59,7 +97,7 @@ public class PolicyParser1 extends BaseParser<Object> {
                 EqualChar(),
                 Spacing(),
                 Array(stepVar),
-                NewLine()
+                Optional(NewLine())
                 );
     }
 
@@ -171,7 +209,7 @@ public class PolicyParser1 extends BaseParser<Object> {
     }
 
     Rule Spacing() {
-        return OneOrMore(AnyOf(" \t\r\n\f").label("Whitespace"));
+        return OneOrMore(AnyOf(" \t\r\n\f").label("BlankSpace"));
     }
 
     Rule NewLine() {

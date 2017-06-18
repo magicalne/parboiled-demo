@@ -4,3 +4,10 @@ mode = NORMAL
 pass -> one
 reject -> return
 undefine -> return
+
+step one:
+ruleSet = [ahaha.groovy, adfa, a,f,af,ad,fa, fff]
+
+step two:
+ruleSet = [a,d,a,d]
+mode = NORMAL
